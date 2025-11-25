@@ -20,8 +20,8 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter:1.0.0-M3'
+    // MCP Server - stdio 기반 통신
+    implementation 'org.springframework.ai:spring-ai-mcp-server-spring-boot-starter:1.0.0-M6'
 
     // JSON processing
     implementation 'com.fasterxml.jackson.core:jackson-databind'

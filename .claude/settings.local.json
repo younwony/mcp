@@ -3,7 +3,12 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(gradle wrapper:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(.gradlew clean build:*)",
+      "Bash(cmd.exe /c \"gradlew.bat clean build\")",
+      "Bash(chmod:*)",
+      "Bash(./gradlew clean build:*)",
+      "Bash(./gradlew dependencies:*)"
     ],
     "deny": [],
     "ask": []

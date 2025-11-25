@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "weather-calculator": {
+      "command": "java",
+      "args": [
+        "-jar",
+        "C:\\workspace\\intellij\\mcp\\build\\libs\\mcp-0.0.1-SNAPSHOT.jar"
+      ]
+    }
+  }
+}
