@@ -9,7 +9,11 @@
       "Bash(chmod:*)",
       "Bash(./gradlew clean build:*)",
       "Bash(./gradlew dependencies:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(./gradlew test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

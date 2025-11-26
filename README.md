@@ -36,15 +36,48 @@ Claude (AI) ──stdio/JSON-RPC 2.0──► MCP 서버 ──► 실제 로직
 - Java 17 이상
 - Gradle 8.5 이상
 - Claude Desktop (MCP 클라이언트)
+- 기상청 API 키 (선택사항, [공공데이터포털](https://www.data.go.kr/data/15084084/openapi.do)에서 발급)
 
-### 2. 프로젝트 빌드
+### 2. API 키 설정 (선택사항)
+
+기상청 날씨 API를 사용하려면 API 키가 필요합니다.
+
+#### 2.1. API 키 발급
+
+1. [공공데이터포털](https://www.data.go.kr/) 접속
+2. 회원가입 및 로그인
+3. "기상청_단기예보 조회서비스" 검색
+4. 활용신청 클릭
+5. 발급받은 인증키 복사
+
+#### 2.2. API 키 등록
+
+`src/main/resources/application.yml` 파일을 열고 `service-key` 값을 변경:
+
+```yaml
+weather:
+  api:
+    service-key: YOUR_API_KEY_HERE
+```
+
+또는 환경 변수로 설정:
+
+```bash
+# Windows
+set WEATHER_API_SERVICE_KEY=YOUR_API_KEY_HERE
+
+# macOS/Linux
+export WEATHER_API_SERVICE_KEY=YOUR_API_KEY_HERE
+```
+
+### 3. 프로젝트 빌드
 
 ```bash
 cd C:\workspace\intellij\mcp
 .\gradlew clean build
 ```
 
-### 3. Claude Desktop 설정
+### 4. Claude Desktop 설정
 
 **Windows**: `%APPDATA%\Claude\claude_desktop_config.json` 파일에 추가:
 
@@ -115,25 +148,64 @@ mcp/
 
 ## 🛠️ 제공되는 도구
 
-### 1. get_weather
+### 1. 기상청 날씨 API
 
-특정 지역의 날씨 정보를 제공합니다.
+한국 기상청의 공식 단기예보 조회서비스를 제공합니다. **[📖 상세 가이드 보기](docs/WEATHER_API.md)**
+
+#### 1.1. getUltraSrtNcst (초단기실황조회)
+
+현재 시각 기준 실황 정보를 제공합니다.
 
 **입력**:
-- `location` (String): 도시 이름 (예: "Seoul", "Tokyo")
+- `latitude` (double): 위도 (예: 37.5665)
+- `longitude` (double): 경도 (예: 126.9780)
 
 **출력**:
-```json
-{
-  "location": "Seoul",
-  "temperature": "15°C",
-  "condition": "Partly Cloudy",
-  "humidity": "65%",
-  "description": "Seoul is currently experiencing partly cloudy conditions..."
-}
+```
+=== 초단기실황 (위도: 37.5665, 경도: 126.9780) ===
+발표시각: 20241126 1400
+
+기온: 15.2℃
+1시간 강수량: 0mm
+습도: 65%
+강수형태: 없음
+풍향: N
+풍속: 2.3m/s
 ```
 
-**참고**: 현재는 모의 데이터를 반환합니다. 실제 프로덕션에서는 OpenWeatherMap 등의 API를 연동하세요.
+**발표시각**: 매시각 정시 (00:00, 01:00, ..., 23:00) + 10분 후 제공
+
+#### 1.2. getUltraSrtFcst (초단기예보조회)
+
+6시간 이내 예보 정보를 제공합니다.
+
+**입력**:
+- `latitude` (double): 위도
+- `longitude` (double): 경도
+
+**출력**: 시간대별 예보 (기온, 강수, 하늘상태, 풍향, 풍속 등)
+
+**발표시각**: 매시각 30분 (00:30, 01:30, ..., 23:30) + 15분 후 제공
+
+#### 1.3. getVilageFcst (단기예보조회)
+
+3일 예보 정보를 제공합니다.
+
+**입력**:
+- `latitude` (double): 위도
+- `longitude` (double): 경도
+
+**출력**: 3일간 시간대별 상세 예보 (기온, 강수확률, 강수량, 적설, 풍향, 풍속, 습도 등)
+
+**발표시각**: 하루 8회 (02, 05, 08, 11, 14, 17, 20, 23시) + 10분 후 제공
+
+**주요 도시 좌표**:
+- 서울: (37.5665, 126.9780)
+- 부산: (35.1796, 129.0756)
+- 제주: (33.4996, 126.5312)
+- 대전: (36.3504, 127.3845)
+
+> **참고**: 위경도는 자동으로 기상청 격자 좌표(nx, ny)로 변환됩니다. Lambert Conformal Conic Projection 알고리즘을 사용합니다.
 
 ### 2. calculate
 
