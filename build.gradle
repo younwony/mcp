@@ -1,11 +1,12 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.3.5'
-    id 'io.spring.dependency-management' version '1.1.6'
+    id 'org.springframework.boot' version '3.5.8'
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
-group = 'com.example'
+group = 'dev.wony'
 version = '0.0.1-SNAPSHOT'
+description = 'spring-ai-mcp'
 
 java {
     toolchain {
@@ -15,23 +16,23 @@ java {
 
 repositories {
     mavenCentral()
-    maven { url 'https://repo.spring.io/milestone' }
-    maven { url 'https://repo.spring.io/snapshot' }
+}
+
+ext {
+    set('springAiVersion', "1.1.0")
 }
 
 dependencies {
-    // MCP Server - stdio 기반 통신
-    implementation 'org.springframework.ai:spring-ai-mcp-server-spring-boot-starter:1.0.0-M6'
-
-    // JSON processing
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-
-    // Lombok for cleaner code
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-
+    implementation 'org.springframework.ai:spring-ai-starter-mcp-server'
+    implementation "org.springframework:spring-web"
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+    }
 }
 
 tasks.named('test') {

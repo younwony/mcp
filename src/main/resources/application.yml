@@ -1,17 +1,6 @@
-spring:
-  application:
-    name: mcp-server
-  ai:
-    mcp:
-      server:
-        # MCP 서버 기본 정보
-        name: "Weather and Calculator MCP Server"
-        version: "1.0.0"
-        # stdio 기반 통신 사용 (Claude Desktop과 통신)
-        transport: stdio
-
 logging:
   level:
-    root: INFO
-    com.example.mcp: DEBUG
-    org.springframework.ai.mcp: DEBUG
+    root: off
+spring:
+  main:
+    banner-mode: off
