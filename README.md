@@ -88,6 +88,7 @@ cd C:\workspace\intellij\mcp
       "command": "java",
       "args": [
         "-jar",
+        "-Dfile.encoding=UTF-8",
         "C:\\workspace\\intellij\\mcp\\build\\libs\\mcp-0.0.1-SNAPSHOT.jar"
       ]
     }
@@ -104,6 +105,7 @@ cd C:\workspace\intellij\mcp
       "command": "java",
       "args": [
         "-jar",
+        "-Dfile.encoding=UTF-8",
         "/absolute/path/to/mcp/build/libs/mcp-0.0.1-SNAPSHOT.jar"
       ]
     }

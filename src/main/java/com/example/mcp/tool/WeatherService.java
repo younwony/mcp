@@ -27,10 +27,23 @@ public class WeatherService {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HHmm");
 
+    // 주요 도시 격자 좌표 (nx, ny)
+    private static final Map<String, GridCoordinate> CITY_COORDINATES = Map.of(
+            "서울", new GridCoordinate(60, 127),
+            "부산", new GridCoordinate(98, 76),
+            "대구", new GridCoordinate(89, 91),
+            "인천", new GridCoordinate(55, 124),
+            "광주", new GridCoordinate(58, 74),
+            "대전", new GridCoordinate(67, 100),
+            "울산", new GridCoordinate(102, 84),
+            "세종", new GridCoordinate(66, 103),
+            "제주", new GridCoordinate(52, 38)
+    );
+
     private final RestClient restClient;
     private final String serviceKey;
 
-    public WeatherService(@Value("${weather.api.service-key:}") String serviceKey) {
+    public WeatherService(@Value("${weather.api.service-key}") String serviceKey) {
         this.serviceKey = serviceKey;
         this.restClient = RestClient.builder()
                 .baseUrl(BASE_URL)
@@ -363,6 +376,128 @@ public class WeatherService {
             });
             result.append("\n");
         });
+
+        return result.toString();
+    }
+
+    /**
+     * 주요 도시의 현재 날씨 조회 (초단기실황)
+     * 도시 이름으로 간편하게 조회
+     */
+    @Tool(description = "한국 주요 도시의 현재 날씨를 조회합니다. 지원 도시: 서울, 부산, 대구, 인천, 광주, 대전, 울산, 세종, 제주")
+    public String getCurrentWeather(
+            @ToolParam(description = "도시명 (서울, 부산, 대구, 인천, 광주, 대전, 울산, 세종, 제주 중 하나)") String city) {
+
+        // ✅ 입력된 도시 이름의 양 끝 공백을 제거합니다.
+        String trimmedCity = city.trim();
+
+        GridCoordinate coord = CITY_COORDINATES.get(trimmedCity);
+        if (coord == null) {
+            return "지원하지 않는 도시입니다. 지원 도시: " + String.join(", ", CITY_COORDINATES.keySet());
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        // 초단기실황은 매시간 정시 발표, 10분 후 제공
+        // 현재 시각이 40분 이전이면 이전 시간 데이터 조회
+        if (now.getMinute() < 40) {
+            now = now.minusHours(1);
+        }
+
+        String baseDate = now.format(DATE_FORMATTER);
+        String baseTime = now.format(DateTimeFormatter.ofPattern("HH")) + "00";
+
+        try {
+            WeatherApiResponse response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/getUltraSrtNcst")
+                            .queryParam("serviceKey", serviceKey)
+                            .queryParam("pageNo", 1)
+                            .queryParam("numOfRows", 10)
+                            .queryParam("dataType", "JSON")
+                            .queryParam("base_date", baseDate)
+                            .queryParam("base_time", baseTime)
+                            .queryParam("nx", coord.nx())
+                            .queryParam("ny", coord.ny())
+                            .build())
+                    .retrieve()
+                    .body(WeatherApiResponse.class);
+
+            if (response == null || response.response() == null || response.response().body() == null) {
+                return city + "의 날씨 정보를 가져올 수 없습니다.";
+            }
+
+            return formatCityWeatherResponse(city, baseDate, baseTime, response);
+
+        } catch (RestClientException e) {
+            return city + "의 날씨 조회 중 오류가 발생했습니다: " + e.getMessage();
+        }
+    }
+
+    /**
+     * 지원 도시 목록 조회
+     */
+    @Tool(description = "날씨 조회가 가능한 한국 주요 도시 목록을 반환합니다")
+    public String getSupportedCities() {
+        return "날씨 조회 가능한 도시:\n" + String.join(", ", CITY_COORDINATES.keySet());
+    }
+
+    /**
+     * 도시별 날씨 응답 포맷팅 (사용자 친화적 이모지 포맷)
+     */
+    private String formatCityWeatherResponse(String city, String baseDate, String baseTime, WeatherApiResponse response) {
+        var items = response.response().body().items();
+        if (items == null || items.item() == null || items.item().isEmpty()) {
+            return city + "의 날씨 데이터가 없습니다.";
+        }
+
+        Map<String, String> weatherData = new LinkedHashMap<>();
+        for (var item : items.item()) {
+            weatherData.put(item.category(), item.obsrValue());
+        }
+
+        StringBuilder result = new StringBuilder();
+        result.append(String.format("📍 %s 현재 날씨 (기준시각: %s %s시)\n\n",
+                city,
+                baseDate.substring(4, 6) + "월 " + baseDate.substring(6, 8) + "일",
+                baseTime.substring(0, 2)));
+
+        // T1H: 기온(℃)
+        if (weatherData.containsKey("T1H")) {
+            result.append(String.format("🌡️ 기온: %s°C\n", weatherData.get("T1H")));
+        }
+
+        // RN1: 1시간 강수량(mm)
+        if (weatherData.containsKey("RN1")) {
+            String rain = weatherData.get("RN1");
+            result.append(String.format("🌧️ 1시간 강수량: %s\n",
+                    rain.equals("0") || rain.equals("강수없음") ? "없음" : rain + "mm"));
+        }
+
+        // REH: 습도(%)
+        if (weatherData.containsKey("REH")) {
+            result.append(String.format("💧 습도: %s%%\n", weatherData.get("REH")));
+        }
+
+        // WSD: 풍속(m/s)
+        if (weatherData.containsKey("WSD")) {
+            result.append(String.format("💨 풍속: %sm/s\n", weatherData.get("WSD")));
+        }
+
+        // PTY: 강수형태 (0:없음, 1:비, 2:비/눈, 3:눈, 5:빗방울, 6:진눈깨비, 7:눈날림)
+        if (weatherData.containsKey("PTY")) {
+            String ptyCode = weatherData.get("PTY");
+            String pty = switch (ptyCode) {
+                case "0" -> "없음";
+                case "1" -> "비";
+                case "2" -> "비/눈";
+                case "3" -> "눈";
+                case "5" -> "빗방울";
+                case "6" -> "빗방울눈날림";
+                case "7" -> "눈날림";
+                default -> ptyCode;
+            };
+            result.append(String.format("☔ 강수형태: %s\n", pty));
+        }
 
         return result.toString();
     }

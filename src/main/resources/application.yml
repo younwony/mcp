@@ -10,9 +10,5 @@ spring:
 # API 키 발급: https://www.data.go.kr/data/15084084/openapi.do
 weather:
   api:
-    # 기상청 API 기본 URL
+    service-key:
     url: http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
-
-    # 공공데이터포털에서 발급받은 서비스 키
-    # 환경 변수로 대체 가능: ${WEATHER_API_SERVICE_KEY:디폴트값}
-    service-key: 83efb05e88a9f0abbd54d209a426fbcbe5d8a544142bb667a59d69e7dbf21bf1
