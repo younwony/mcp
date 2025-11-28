@@ -1452,15 +1452,627 @@ public class OrderService {
 
 ---
 
+## DDD (Domain-Driven Design) 기반 리팩토링
+
+### 1. 도메인 모델 패턴
+
+#### 엔티티 (Entity)
+식별자를 가지며 생명주기가 있는 객체
+
+```java
+// Bad - 빈약한 도메인 모델 (Anemic Domain Model)
+@Entity
+public class Order {
+    private Long id;
+    private String status;
+    private BigDecimal amount;
+
+    // getter/setter만 존재
+}
+
+public class OrderService {
+    public void processOrder(Order order) {
+        // 모든 비즈니스 로직이 서비스에 존재
+        if ("PENDING".equals(order.getStatus())) {
+            order.setStatus("PROCESSING");
+            // ...
+        }
+    }
+}
+
+// Good - 풍부한 도메인 모델 (Rich Domain Model)
+@Entity
+public class Order {
+    @EmbeddedId
+    private OrderId id;
+
+    @Embedded
+    private OrderStatus status;
+
+    @Embedded
+    private Money amount;
+
+    @Embedded
+    private OrderItems items;
+
+    // 비즈니스 로직을 도메인 객체에 포함
+    public void process() {
+        if (!status.canProcess()) {
+            throw new IllegalStateException("주문을 처리할 수 없습니다: " + status);
+        }
+        this.status = OrderStatus.PROCESSING;
+        publishEvent(new OrderProcessedEvent(this.id));
+    }
+
+    public void cancel() {
+        if (!status.canCancel()) {
+            throw new IllegalStateException("주문을 취소할 수 없습니다: " + status);
+        }
+        this.status = OrderStatus.CANCELLED;
+        refundPayment();
+    }
+
+    public void complete() {
+        validateAllItemsShipped();
+        this.status = OrderStatus.COMPLETED;
+    }
+
+    private void validateAllItemsShipped() {
+        if (!items.allShipped()) {
+            throw new IllegalStateException("모든 상품이 배송되지 않았습니다");
+        }
+    }
+}
+
+public class OrderService {
+    // 도메인 객체 조율만 수행
+    public void processOrder(OrderId orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        order.process(); // 비즈니스 로직은 도메인 객체가 수행
+        orderRepository.save(order);
+    }
+}
+```
+
+#### 값 객체 식별자 (Value Object Identifier)
+```java
+// 엔티티의 식별자도 값 객체로 만들기
+public record OrderId(String value) {
+    public OrderId {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("주문 ID는 필수입니다");
+        }
+    }
+
+    public static OrderId generate() {
+        return new OrderId(UUID.randomUUID().toString());
+    }
+
+    public static OrderId from(String value) {
+        return new OrderId(value);
+    }
+}
+
+@Entity
+public class Order {
+    @EmbeddedId
+    private OrderId id;
+
+    // ...
+}
+```
+
+### 2. 도메인 서비스
+
+여러 엔티티를 조율하거나 외부 의존성이 필요한 로직
+
+```java
+// 도메인 서비스: 복잡한 비즈니스 규칙 처리
+@Service
+public class PricingService {
+
+    public Money calculateOrderPrice(Order order, Customer customer) {
+        Money basePrice = order.calculateBasePrice();
+
+        // 고객 등급별 할인
+        Money discount = calculateCustomerDiscount(customer, basePrice);
+
+        // 프로모션 할인
+        Money promotionDiscount = calculatePromotionDiscount(order);
+
+        return basePrice.subtract(discount).subtract(promotionDiscount);
+    }
+
+    private Money calculateCustomerDiscount(Customer customer, Money basePrice) {
+        DiscountRate rate = customer.getDiscountRate();
+        return basePrice.multiply(rate.getValue());
+    }
+}
+```
+
+### 3. 애그리게이트 (Aggregate)
+
+관련된 객체들의 묶음, 일관성 경계
+
+```java
+// 주문 애그리게이트 루트
+@Entity
+public class Order {
+    @EmbeddedId
+    private OrderId id;
+
+    // 애그리게이트 내부의 엔티티들
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderLine> orderLines = new ArrayList<>();
+
+    @Embedded
+    private ShippingInfo shippingInfo;
+
+    // 애그리게이트 외부에는 ID로만 참조
+    @Embedded
+    private CustomerId customerId;
+
+    // 일관성 유지를 위한 메서드
+    public void addOrderLine(Product product, int quantity) {
+        validateNotCompleted();
+
+        OrderLine orderLine = new OrderLine(product, quantity);
+        orderLines.add(orderLine);
+
+        // 주문 금액 재계산
+        recalculateTotalAmount();
+    }
+
+    public void removeOrderLine(OrderLineId orderLineId) {
+        validateNotCompleted();
+
+        orderLines.removeIf(line -> line.getId().equals(orderLineId));
+        recalculateTotalAmount();
+    }
+
+    private void validateNotCompleted() {
+        if (isCompleted()) {
+            throw new IllegalStateException("완료된 주문은 수정할 수 없습니다");
+        }
+    }
+}
+```
+
+### 4. 리포지토리 패턴
+
+```java
+// 도메인 중심의 리포지토리 인터페이스
+public interface OrderRepository {
+    Order findById(OrderId id);
+    List<Order> findByCustomerId(CustomerId customerId);
+    List<Order> findByStatus(OrderStatus status);
+    void save(Order order);
+    void delete(OrderId id);
+}
+
+// 구현체는 인프라 계층에
+@Repository
+public class JpaOrderRepository implements OrderRepository {
+    // JPA 구현
+}
+```
+
+### 5. 도메인 이벤트
+
+```java
+// 도메인 이벤트
+public record OrderPlacedEvent(
+    OrderId orderId,
+    CustomerId customerId,
+    Money totalAmount,
+    LocalDateTime occurredAt
+) {
+    public OrderPlacedEvent(Order order) {
+        this(
+            order.getId(),
+            order.getCustomerId(),
+            order.getTotalAmount(),
+            LocalDateTime.now()
+        );
+    }
+}
+
+// 이벤트 발행
+@Entity
+public class Order {
+    @Transient
+    private List<DomainEvent> domainEvents = new ArrayList<>();
+
+    public void place() {
+        validateCanPlace();
+        this.status = OrderStatus.PLACED;
+        this.placedAt = LocalDateTime.now();
+
+        // 이벤트 등록
+        registerEvent(new OrderPlacedEvent(this));
+    }
+
+    protected void registerEvent(DomainEvent event) {
+        domainEvents.add(event);
+    }
+
+    public List<DomainEvent> getDomainEvents() {
+        return Collections.unmodifiableList(domainEvents);
+    }
+
+    public void clearDomainEvents() {
+        domainEvents.clear();
+    }
+}
+```
+
+---
+
+## Enum 하드코딩 처리
+
+### 1. 데이터베이스 기반 코드 관리
+
+하드코딩된 Enum을 데이터베이스에서 관리하는 방법
+
+```java
+// Bad - 하드코딩된 Enum
+public enum PaymentMethod {
+    CREDIT_CARD("신용카드"),
+    BANK_TRANSFER("계좌이체"),
+    MOBILE("모바일결제");
+
+    // 새로운 결제 수단 추가 시 코드 수정 및 배포 필요
+}
+
+// Good - 데이터베이스 기반 코드 관리
+@Entity
+@Table(name = "codes")
+public class Code {
+    @Id
+    private String code;
+
+    private String codeGroup;
+    private String codeName;
+    private String description;
+    private int sortOrder;
+    private boolean useYn;
+
+    @Column(name = "attr1")
+    private String attribute1;  // 확장 가능한 속성
+
+    @Column(name = "attr2")
+    private String attribute2;
+}
+
+@Service
+public class CodeService {
+    private final CodeRepository codeRepository;
+    private final Map<String, List<Code>> codeCache = new ConcurrentHashMap<>();
+
+    public List<Code> getCodesByGroup(String codeGroup) {
+        return codeCache.computeIfAbsent(codeGroup,
+            key -> codeRepository.findByCodeGroupAndUseYnTrue(key));
+    }
+
+    public Code getCode(String codeGroup, String code) {
+        return getCodesByGroup(codeGroup).stream()
+            .filter(c -> c.getCode().equals(code))
+            .findFirst()
+            .orElseThrow(() -> new CodeNotFoundException(codeGroup, code));
+    }
+
+    @Scheduled(fixedDelay = 300000) // 5분마다 캐시 갱신
+    public void refreshCache() {
+        codeCache.clear();
+    }
+}
+```
+
+### 2. Enum과 데이터베이스 하이브리드 방식
+
+```java
+// Enum의 타입 안정성과 데이터베이스의 유연성을 결합
+public interface CodeEnum {
+    String getCode();
+    String getName();
+}
+
+public enum PaymentMethodType implements CodeEnum {
+    CREDIT_CARD("CC", "신용카드"),
+    BANK_TRANSFER("BT", "계좌이체"),
+    MOBILE("MB", "모바일결제"),
+    UNKNOWN("UK", "알 수 없음"); // 기본값
+
+    private final String code;
+    private final String name;
+
+    PaymentMethodType(String code, String name) {
+        this.code = code;
+        this.name = name;
+    }
+
+    @Override
+    public String getCode() {
+        return code;
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    public static PaymentMethodType fromCode(String code) {
+        return Arrays.stream(values())
+            .filter(type -> type.code.equals(code))
+            .findFirst()
+            .orElse(UNKNOWN);
+    }
+}
+
+// 데이터베이스에서 추가 정보 관리
+@Entity
+public class PaymentMethodConfig {
+    @Id
+    @Enumerated(EnumType.STRING)
+    private PaymentMethodType type;
+
+    private String displayName;
+    private String iconUrl;
+    private boolean enabled;
+    private BigDecimal feeRate;
+    private int displayOrder;
+
+    // 비즈니스 로직
+    public Money calculateFee(Money amount) {
+        if (!enabled) {
+            throw new IllegalStateException("사용할 수 없는 결제 수단입니다");
+        }
+        return amount.multiply(feeRate);
+    }
+}
+```
+
+### 3. 설정 파일 기반 관리 (YAML/Properties)
+
+```yaml
+# application.yml
+payment:
+  methods:
+    - code: CC
+      name: 신용카드
+      enabled: true
+      fee-rate: 0.03
+      display-order: 1
+    - code: BT
+      name: 계좌이체
+      enabled: true
+      fee-rate: 0.01
+      display-order: 2
+    - code: MB
+      name: 모바일결제
+      enabled: true
+      fee-rate: 0.025
+      display-order: 3
+```
+
+```java
+@Configuration
+@ConfigurationProperties(prefix = "payment")
+public class PaymentConfig {
+    private List<PaymentMethodConfig> methods;
+
+    public record PaymentMethodConfig(
+        String code,
+        String name,
+        boolean enabled,
+        BigDecimal feeRate,
+        int displayOrder
+    ) {}
+
+    public List<PaymentMethodConfig> getMethods() {
+        return methods;
+    }
+
+    public PaymentMethodConfig getMethod(String code) {
+        return methods.stream()
+            .filter(method -> method.code().equals(code))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Unknown payment method: " + code));
+    }
+}
+```
+
+### 4. 전략 패턴과 함께 사용
+
+```java
+// 전략 인터페이스
+public interface PaymentStrategy {
+    String getCode();
+    PaymentResult process(PaymentRequest request);
+    boolean isEnabled();
+}
+
+// 구체적인 전략들을 Spring Bean으로 등록
+@Component("CC")
+public class CreditCardPaymentStrategy implements PaymentStrategy {
+    @Override
+    public String getCode() {
+        return "CC";
+    }
+
+    @Override
+    public PaymentResult process(PaymentRequest request) {
+        // 신용카드 결제 로직
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+}
+
+@Service
+public class PaymentService {
+    private final Map<String, PaymentStrategy> strategies;
+
+    public PaymentService(List<PaymentStrategy> strategyList) {
+        this.strategies = strategyList.stream()
+            .collect(Collectors.toMap(PaymentStrategy::getCode, Function.identity()));
+    }
+
+    public PaymentResult pay(String methodCode, PaymentRequest request) {
+        PaymentStrategy strategy = strategies.get(methodCode);
+        if (strategy == null || !strategy.isEnabled()) {
+            throw new IllegalArgumentException("사용할 수 없는 결제 수단입니다: " + methodCode);
+        }
+        return strategy.process(request);
+    }
+}
+```
+
+---
+
+## MCP 서버 개발 설계 패턴
+
+### 1. Tool 메서드 설계 원칙
+
+```java
+// Bad - 책임이 너무 많은 Tool 메서드
+@Tool(description = "날씨 조회 및 분석")
+public String getWeatherAndAnalyze(double lat, double lon, String analysisType) {
+    // 데이터 조회, 분석, 포맷팅을 모두 수행
+}
+
+// Good - 단일 책임을 가진 Tool 메서드들
+@Tool(description = "현재 날씨 조회")
+public String getCurrentWeather(
+    @ToolParam(description = "위도") double latitude,
+    @ToolParam(description = "경도") double longitude
+) {
+    Coordinate coordinate = new Coordinate(latitude, longitude);
+    WeatherData data = weatherService.getCurrentWeather(coordinate);
+    return weatherFormatter.format(data);
+}
+
+@Tool(description = "날씨 예보 조회")
+public String getForecast(
+    @ToolParam(description = "위도") double latitude,
+    @ToolParam(description = "경도") double longitude,
+    @ToolParam(description = "예보 기간(시간)") int hours
+) {
+    Coordinate coordinate = new Coordinate(latitude, longitude);
+    ForecastData data = weatherService.getForecast(coordinate, hours);
+    return weatherFormatter.format(data);
+}
+```
+
+### 2. 값 객체 활용
+
+```java
+// MCP Tool에서 값 객체 적극 활용
+@Tool(description = "지역 날씨 조회")
+public String getWeatherByCity(
+    @ToolParam(description = "도시명") String cityName
+) {
+    // 값 객체로 검증 및 변환
+    City city = City.from(cityName);
+    Coordinate coordinate = city.getCoordinate();
+
+    BaseDateTime baseTime = BaseDateTime.forUltraShortObservation(LocalDateTime.now());
+    WeatherData data = weatherService.getWeather(coordinate, baseTime);
+
+    return weatherFormatter.format(city, data, baseTime);
+}
+
+// City 값 객체
+public record City(String name, Coordinate coordinate) {
+    private static final Map<String, Coordinate> CITY_COORDINATES = Map.of(
+        "서울", new Coordinate(37.5665, 126.9780),
+        "부산", new Coordinate(35.1796, 129.0756)
+        // ...
+    );
+
+    public static City from(String name) {
+        String trimmedName = name.trim();
+        Coordinate coordinate = CITY_COORDINATES.get(trimmedName);
+
+        if (coordinate == null) {
+            throw new IllegalArgumentException(
+                "지원하지 않는 도시입니다: " + trimmedName);
+        }
+
+        return new City(trimmedName, coordinate);
+    }
+}
+```
+
+### 3. 응답 포맷터 분리
+
+```java
+// 포맷터를 별도 클래스로 분리하여 재사용성 향상
+public interface ResponseFormatter<T> {
+    String format(T data);
+}
+
+@Component
+public class WeatherResponseFormatter implements ResponseFormatter<WeatherData> {
+    @Override
+    public String format(WeatherData data) {
+        return formatAsHumanReadable(data);
+    }
+
+    public String formatAsJson(WeatherData data) {
+        // JSON 형식
+    }
+
+    public String formatAsTable(WeatherData data) {
+        // 표 형식
+    }
+}
+```
+
+### 4. 계층 분리
+
+```
+src/main/java/
+├── tool/                       # MCP Tool 레이어
+│   ├── WeatherTool.java       # @Tool 메서드만 포함
+│   └── CityTool.java
+├── service/                    # 비즈니스 로직 레이어
+│   ├── WeatherService.java
+│   └── LocationService.java
+├── domain/                     # 도메인 모델
+│   ├── model/
+│   │   ├── Coordinate.java
+│   │   ├── WeatherData.java
+│   │   └── City.java
+│   └── repository/
+│       └── WeatherRepository.java
+├── infrastructure/             # 외부 연동
+│   ├── api/
+│   │   └── KmaApiClient.java
+│   └── cache/
+│       └── WeatherCacheManager.java
+└── presentation/               # 응답 포맷팅
+    └── formatter/
+        └── WeatherFormatter.java
+```
+
+---
+
 ## 참고 자료
 
 - Martin Fowler - "Refactoring: Improving the Design of Existing Code"
 - Robert C. Martin - "Clean Code"
 - Joshua Bloch - "Effective Java"
+- Eric Evans - "Domain-Driven Design"
+- Vaughn Vernon - "Implementing Domain-Driven Design"
 - Gang of Four - "Design Patterns"
 
 ---
 
 ## 마무리
 
-리팩토링은 코드 품질을 지속적으로 개선하는 과정입니다. 작은 변경을 자주 수행하고, 항상 테스트를 통해 검증하세요. 완벽한 코드는 없지만, 지속적인 개선을 통해 더 나은 코드를 만들 수 있습니다.
+리팩토링은 코드 품질을 지속적으로 개선하는 과정입니다. 작은 변경을 자주 수행하고, 항상 테스트를 통해 검증하세요. DDD 원칙과 값 객체 패턴을 활용하면 더욱 견고하고 유지보수하기 쉬운 코드를 만들 수 있습니다. 완벽한 코드는 없지만, 지속적인 개선을 통해 더 나은 코드를 만들 수 있습니다.

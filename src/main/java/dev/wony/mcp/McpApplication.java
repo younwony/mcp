@@ -1,6 +1,6 @@
 package dev.wony.mcp;
 
-import dev.wony.mcp.tool.WeatherService;
+import dev.wony.mcp.tool.weather.WeatherService;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.boot.SpringApplication;

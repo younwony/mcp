@@ -1,22 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)",
-      "Bash(gradle wrapper:*)",
-      "Bash(tree:*)",
-      "Bash(.gradlew clean build:*)",
-      "Bash(cmd.exe /c \"gradlew.bat clean build\")",
-      "Bash(chmod:*)",
-      "Bash(./gradlew clean build:*)",
-      "Bash(./gradlew dependencies:*)",
-      "WebSearch",
-      "Bash(./gradlew test:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git reset:*)",
-      "Bash(dir C:workspaceintellijmcpsrc /S /B)",
-      "Bash(./gradlew build:*)",
-      "Bash(dir:*)"
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

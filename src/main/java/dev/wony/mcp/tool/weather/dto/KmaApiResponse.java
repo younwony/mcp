@@ -1,4 +1,4 @@
-package dev.wony.mcp.tool.dto;
+package dev.wony.mcp.tool.weather.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

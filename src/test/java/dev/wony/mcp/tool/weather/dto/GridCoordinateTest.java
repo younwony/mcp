@@ -1,4 +1,4 @@
-package dev.wony.mcp.tool.dto;
+package dev.wony.mcp.tool.weather.dto;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

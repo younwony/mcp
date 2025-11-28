@@ -1,4 +1,4 @@
-package dev.wony.mcp.tool.dto;
+package dev.wony.mcp.tool.weather.dto;
 
 /**
  * 기상청 예보 요소 카테고리
@@ -45,45 +45,37 @@ public enum WeatherCategory {
 
     /**
      * 하늘상태 코드 해석
+     *
+     * @param value 하늘 상태 코드
+     * @return 해석된 하늘 상태 문자열
+     * @deprecated {@link dev.wony.mcp.tool.weather.util.WeatherCodeInterpreter#interpretSkyCode(String)} 사용 권장
      */
+    @Deprecated(since = "리팩토링", forRemoval = false)
     public static String interpretSkyCode(String value) {
-        return switch (value) {
-            case "1" -> "맑음";
-            case "3" -> "구름많음";
-            case "4" -> "흐림";
-            default -> value;
-        };
+        return dev.wony.mcp.tool.weather.util.WeatherCodeInterpreter.interpretSkyCode(value);
     }
 
     /**
      * 강수형태 코드 해석
+     *
+     * @param value 강수 형태 코드
+     * @return 해석된 강수 형태 문자열
+     * @deprecated {@link dev.wony.mcp.tool.weather.util.WeatherCodeInterpreter#interpretPrecipitationType(String)} 사용 권장
      */
+    @Deprecated(since = "리팩토링", forRemoval = false)
     public static String interpretPtyCode(String value) {
-        return switch (value) {
-            case "0" -> "없음";
-            case "1" -> "비";
-            case "2" -> "비/눈";
-            case "3" -> "눈";
-            case "4" -> "소나기";
-            case "5" -> "빗방울";
-            case "6" -> "빗방울눈날림";
-            case "7" -> "눈날림";
-            default -> value;
-        };
+        return dev.wony.mcp.tool.weather.util.WeatherCodeInterpreter.interpretPrecipitationType(value);
     }
 
     /**
      * 풍향 값을 16방위로 변환
+     *
+     * @param value 풍향 각도 문자열
+     * @return 16방위 문자열
+     * @deprecated {@link dev.wony.mcp.tool.weather.util.WeatherCodeInterpreter#interpretWindDirection(String)} 사용 권장
      */
+    @Deprecated(since = "리팩토링", forRemoval = false)
     public static String interpretWindDirection(String value) {
-        try {
-            double degree = Double.parseDouble(value);
-            int index = (int) ((degree + 22.5 * 0.5) / 22.5);
-            String[] directions = {"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-                    "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"};
-            return directions[index % 16];
-        } catch (NumberFormatException e) {
-            return value;
-        }
+        return dev.wony.mcp.tool.weather.util.WeatherCodeInterpreter.interpretWindDirection(value);
     }
 }

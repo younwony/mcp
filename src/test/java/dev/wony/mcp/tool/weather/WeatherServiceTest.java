@@ -1,6 +1,6 @@
-package dev.wony.mcp.tool;
+package dev.wony.mcp.tool.weather;
 
-import dev.wony.mcp.tool.dto.GridCoordinate;
+import dev.wony.mcp.tool.weather.dto.GridCoordinate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

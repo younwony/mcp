@@ -1,4 +1,4 @@
-package dev.wony.mcp.tool;
+package dev.wony.mcp.tool.weather;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
