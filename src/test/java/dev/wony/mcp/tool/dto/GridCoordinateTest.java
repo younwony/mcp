@@ -1,4 +1,4 @@
-package com.example.mcp.tool.dto;
+package dev.wony.mcp.tool.dto;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

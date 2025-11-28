@@ -1,4 +1,4 @@
-package com.example.mcp.tool.dto;
+package dev.wony.mcp.tool.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -6,12 +6,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /**
- * 기상청 API 공통 응답 구조
+ * 기상청 API 응답 DTO
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record WeatherApiResponse(
-        @JsonProperty("response") Response response
-) {
+public record KmaApiResponse(@JsonProperty("response") Response response) {
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Response(
             @JsonProperty("header") Header header,
@@ -37,9 +36,7 @@ public record WeatherApiResponse(
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Items(
-            @JsonProperty("item") List<Item> item
-    ) {
+    public record Items(@JsonProperty("item") List<Item> item) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -51,8 +48,7 @@ public record WeatherApiResponse(
             @JsonProperty("fcstTime") String fcstTime,
             @JsonProperty("fcstValue") String fcstValue,
             @JsonProperty("nx") Integer nx,
-            @JsonProperty("ny") Integer ny,
-            @JsonProperty("obsrValue") String obsrValue
+            @JsonProperty("ny") Integer ny
     ) {
     }
 }

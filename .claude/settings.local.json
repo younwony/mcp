@@ -13,7 +13,9 @@
       "Bash(./gradlew test:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(dir C:workspaceintellijmcpsrc /S /B)",
+      "Bash(./gradlew build:*)"
     ],
     "deny": [],
     "ask": []

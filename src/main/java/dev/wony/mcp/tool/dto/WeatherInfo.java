@@ -1,4 +1,4 @@
-package com.example.mcp.tool.dto;
+package dev.wony.mcp.tool.dto;
 
 /**
  * 날씨 정보를 사람이 읽기 쉬운 형태로 변환한 DTO

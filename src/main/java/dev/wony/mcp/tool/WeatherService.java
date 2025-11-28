@@ -1,8 +1,8 @@
-package com.example.mcp.tool;
+package dev.wony.mcp.tool;
 
-import com.example.mcp.tool.dto.GridCoordinate;
-import com.example.mcp.tool.dto.WeatherApiResponse;
-import com.example.mcp.tool.dto.WeatherCategory;
+import dev.wony.mcp.tool.dto.GridCoordinate;
+import dev.wony.mcp.tool.dto.WeatherApiResponse;
+import dev.wony.mcp.tool.dto.WeatherCategory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.beans.factory.annotation.Value;

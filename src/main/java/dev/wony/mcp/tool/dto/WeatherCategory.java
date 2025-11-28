@@ -1,4 +1,4 @@
-package com.example.mcp.tool.dto;
+package dev.wony.mcp.tool.dto;
 
 /**
  * 기상청 예보 요소 카테고리
