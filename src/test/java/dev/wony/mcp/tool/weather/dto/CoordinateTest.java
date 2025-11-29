@@ -152,4 +152,94 @@ class CoordinateTest {
             assertThat(formatted).contains("126.9780");
         }
     }
+
+    @Nested
+    @DisplayName("좌표 간 거리 계산 테스트")
+    class DistanceToTest {
+
+        @Test
+        @DisplayName("동일한 좌표의 거리는 0이다")
+        void shouldReturnZero_whenSameCoordinate() {
+            // given
+            Coordinate seoul = new Coordinate(37.5665, 126.9780);
+
+            // when
+            double distance = seoul.distanceTo(seoul);
+
+            // then
+            assertThat(distance).isEqualTo(0.0);
+        }
+
+        @Test
+        @DisplayName("서울-부산 거리를 계산한다")
+        void shouldCalculateDistance_betweenSeoulAndBusan() {
+            // given
+            Coordinate seoul = new Coordinate(37.5665, 126.9780);
+            Coordinate busan = new Coordinate(35.1796, 129.0756);
+
+            // when
+            double distance = seoul.distanceTo(busan);
+
+            // then
+            // 서울-부산 직선거리는 약 325km
+            assertThat(distance).isCloseTo(325.0, within(10.0));
+        }
+
+        @Test
+        @DisplayName("서울-제주 거리를 계산한다")
+        void shouldCalculateDistance_betweenSeoulAndJeju() {
+            // given
+            Coordinate seoul = new Coordinate(37.5665, 126.9780);
+            Coordinate jeju = new Coordinate(33.4996, 126.5312);
+
+            // when
+            double distance = seoul.distanceTo(jeju);
+
+            // then
+            // 서울-제주 직선거리는 약 450km
+            assertThat(distance).isCloseTo(450.0, within(10.0));
+        }
+
+        @Test
+        @DisplayName("거리 계산은 양방향 동일하다")
+        void shouldCalculateSameDistance_inBothDirections() {
+            // given
+            Coordinate seoul = new Coordinate(37.5665, 126.9780);
+            Coordinate busan = new Coordinate(35.1796, 129.0756);
+
+            // when
+            double seoulToBusan = seoul.distanceTo(busan);
+            double busanToSeoul = busan.distanceTo(seoul);
+
+            // then
+            assertThat(seoulToBusan).isEqualTo(busanToSeoul);
+        }
+
+        @Test
+        @DisplayName("null 좌표로 거리를 계산하면 예외가 발생한다")
+        void shouldThrowException_whenOtherCoordinateIsNull() {
+            // given
+            Coordinate seoul = new Coordinate(37.5665, 126.9780);
+
+            // when & then
+            assertThatThrownBy(() -> seoul.distanceTo(null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("null");
+        }
+
+        @Test
+        @DisplayName("먼 거리도 정확하게 계산한다 (서울-런던)")
+        void shouldCalculateLongDistance_betweenSeoulAndLondon() {
+            // given
+            Coordinate seoul = new Coordinate(37.5665, 126.9780);
+            Coordinate london = new Coordinate(51.5074, -0.1278);
+
+            // when
+            double distance = seoul.distanceTo(london);
+
+            // then
+            // 서울-런던 직선거리는 약 8,900km
+            assertThat(distance).isCloseTo(8900.0, within(100.0));
+        }
+    }
 }
