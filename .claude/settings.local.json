@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(test:*)",
+      "Bash(tree:*)",
+      "Bash(rm:*)",
+      "Bash(git add:*)",
+      "Bash(./gradlew test:*)"
     ],
     "deny": [],
     "ask": []

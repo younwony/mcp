@@ -3,6 +3,8 @@ package dev.wony.mcp.tool.weather;
 import dev.wony.mcp.tool.weather.dto.GridCoordinate;
 import dev.wony.mcp.tool.weather.dto.WeatherApiResponse;
 import dev.wony.mcp.tool.weather.dto.WeatherCategory;
+import dev.wony.mcp.tool.weather.util.CoordinateConverter;
+import dev.wony.mcp.tool.weather.util.WeatherCodeInterpreter;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,7 +65,7 @@ public class WeatherService {
             @ToolParam(description = "Latitude (위도)") double latitude,
             @ToolParam(description = "Longitude (경도)") double longitude
     ) {
-        GridCoordinate grid = GridCoordinate.fromLatLon(latitude, longitude);
+        GridCoordinate grid = CoordinateConverter.toGridCoordinate(latitude, longitude);
         LocalDateTime now = LocalDateTime.now();
 
         // 기준시각: 현재 시각에서 한 시간 전, 정시
@@ -106,7 +108,7 @@ public class WeatherService {
             @ToolParam(description = "Latitude (위도)") double latitude,
             @ToolParam(description = "Longitude (경도)") double longitude
     ) {
-        GridCoordinate grid = GridCoordinate.fromLatLon(latitude, longitude);
+        GridCoordinate grid = CoordinateConverter.toGridCoordinate(latitude, longitude);
         LocalDateTime now = LocalDateTime.now();
 
         // 기준시각: 현재 시각 기준으로 가장 최근 발표 시각 (매시 30분)
@@ -155,7 +157,7 @@ public class WeatherService {
             @ToolParam(description = "Latitude (위도)") double latitude,
             @ToolParam(description = "Longitude (경도)") double longitude
     ) {
-        GridCoordinate grid = GridCoordinate.fromLatLon(latitude, longitude);
+        GridCoordinate grid = CoordinateConverter.toGridCoordinate(latitude, longitude);
         LocalDateTime now = LocalDateTime.now();
 
         // 단기예보 발표시각: 02:10, 05:10, 08:10, 11:10, 14:10, 17:10, 20:10, 23:10
@@ -240,9 +242,9 @@ public class WeatherService {
             String value = item.obsrValue();
 
             if ("PTY".equals(category)) {
-                weatherData.put("강수형태", WeatherCategory.interpretPtyCode(value));
+                weatherData.put("강수형태", WeatherCodeInterpreter.interpretPrecipitationType(value));
             } else if ("VEC".equals(category)) {
-                weatherData.put("풍향", WeatherCategory.interpretWindDirection(value));
+                weatherData.put("풍향", WeatherCodeInterpreter.interpretWindDirection(value));
             } else {
                 try {
                     WeatherCategory cat = WeatherCategory.valueOf(category);
@@ -299,11 +301,11 @@ public class WeatherService {
             result.append(String.format("[%s]\n", time));
             data.forEach((category, value) -> {
                 if ("PTY".equals(category)) {
-                    result.append(String.format("  강수형태: %s\n", WeatherCategory.interpretPtyCode(value)));
+                    result.append(String.format("  강수형태: %s\n", WeatherCodeInterpreter.interpretPrecipitationType(value)));
                 } else if ("SKY".equals(category)) {
-                    result.append(String.format("  하늘상태: %s\n", WeatherCategory.interpretSkyCode(value)));
+                    result.append(String.format("  하늘상태: %s\n", WeatherCodeInterpreter.interpretSkyCode(value)));
                 } else if ("VEC".equals(category)) {
-                    result.append(String.format("  풍향: %s\n", WeatherCategory.interpretWindDirection(value)));
+                    result.append(String.format("  풍향: %s\n", WeatherCodeInterpreter.interpretWindDirection(value)));
                 } else {
                     try {
                         WeatherCategory cat = WeatherCategory.valueOf(category);
@@ -360,11 +362,11 @@ public class WeatherService {
             result.append(String.format("[%s]\n", time));
             data.forEach((category, value) -> {
                 if ("PTY".equals(category)) {
-                    result.append(String.format("  강수형태: %s\n", WeatherCategory.interpretPtyCode(value)));
+                    result.append(String.format("  강수형태: %s\n", WeatherCodeInterpreter.interpretPrecipitationType(value)));
                 } else if ("SKY".equals(category)) {
-                    result.append(String.format("  하늘상태: %s\n", WeatherCategory.interpretSkyCode(value)));
+                    result.append(String.format("  하늘상태: %s\n", WeatherCodeInterpreter.interpretSkyCode(value)));
                 } else if ("VEC".equals(category)) {
-                    result.append(String.format("  풍향: %s\n", WeatherCategory.interpretWindDirection(value)));
+                    result.append(String.format("  풍향: %s\n", WeatherCodeInterpreter.interpretWindDirection(value)));
                 } else {
                     try {
                         WeatherCategory cat = WeatherCategory.valueOf(category);
